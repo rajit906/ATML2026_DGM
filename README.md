@@ -7,3 +7,4 @@ You may clone the repo by using:
 ```bash
 git clone https://github.com/rajit906/ATML2026_DGM.git
 ```
+All tutorials will be released here. Feel free to fork or star this repo for future reference.
