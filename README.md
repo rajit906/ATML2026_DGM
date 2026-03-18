@@ -16,5 +16,6 @@ All tutorials will be released here. Feel free to fork or star this repo for fut
 - Week 6: Adversarial objectives for generative models: generative adversarial networks, density-free evaluation of generative models
 - Week 7: Downstream uses of generative models: representation learning, conditioning and control, improvement with human feedback
 - Week 8: Evaluating generative AI
-- Week 9: Score-Based Diffusion Models 
-- Week 10: More diffusion, Flow Matching
+- Week 9: Diffusion Models as Latent Variable Models
+- Week 10: Diffusion Models as Score-Based Models
+- Week 11: Diffusion Models from a Continuous-Time Perspective, Flow Matching
