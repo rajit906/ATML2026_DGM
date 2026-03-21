@@ -1,6 +1,7 @@
 # ATML 2026 Coursework (Deep Generative Modeling)
 ### Instructor: Nikolay Malkin
 ### TAs: Rajit Rajpal, Kirill Tamogashev.
+### Course Page: https://opencourse.inf.ed.ac.uk/atml/track-deep-generative-modelling
 
 You may clone the repo by using:
 
