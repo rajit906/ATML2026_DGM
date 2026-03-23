@@ -31,22 +31,22 @@ class ConvBlock(nn.Module):
         return F.gelu(h + emb)
 
 
-class MiniUNetFlow(nn.Module):
+class MiniUNetContinuous(nn.Module):
     """
-    A minimal U-Net for flow matching on 28x28 grayscale images.
+    A minimal U-Net for continuous-time VP-SDE / PFODE on 28x28 grayscale images.
 
     Compared to MiniUNetCFG (week10/unet.py) the key differences are:
       1. No class conditioning — this model is unconditional.
       2. t is already in [0, 1] (continuous), so no division by num_steps.
       3. self.time_proj is stored as a proper nn.Module attribute instead of
          being instantiated inside forward() (which prevented it from learning).
-      4. The model predicts a velocity field v_theta(x_t, t) rather than noise.
+      4. The model predicts noise ε rather than a velocity field.
 
     Architecture:
         Encoder: 28x28 → 14x14 → 7x7
         Bottleneck: 7x7
         Decoder: 7x7 → 14x14 → 28x28  (with skip connections)
-        Output: 1-channel velocity field, same spatial size as input
+        Output: 1-channel predicted noise ε, same spatial size as input
     """
 
     def __init__(self, in_channels: int = 1, time_emb_dim: int = 64):
@@ -76,7 +76,7 @@ class MiniUNetFlow(nn.Module):
             t: (B,) continuous timestep in [0, 1]
 
         Returns:
-            (B, 1, 28, 28) predicted velocity field
+            (B, 1, 28, 28) predicted noise ε
         """
         # Build sinusoidal time embedding — t is already in [0, 1]
         t_sin_cos = torch.stack(
