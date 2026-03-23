@@ -12,6 +12,34 @@ else:
     device = torch.device("cpu")
 
 
+def sinusoidal_embedding(t: torch.Tensor, dim: int, max_period: float = 10000.0) -> torch.Tensor:
+    """
+    Multi-frequency sinusoidal embedding for continuous t in [0, 1].
+
+    Uses `dim//2` log-spaced frequencies (identical in spirit to DDPM / Transformer
+    positional encoding).  A single sin/cos pair (the old approach) gives only one
+    frequency and cannot distinguish nearby noise levels; this gives dim//2 frequencies
+    spanning a wide range, so the model sees a rich, unique fingerprint for every t.
+
+    Args:
+        t:          (B,) timesteps in [0, 1]
+        dim:        embedding dimension (must be even)
+        max_period: controls the minimum frequency
+
+    Returns:
+        (B, dim) sinusoidal features
+    """
+    assert dim % 2 == 0, "dim must be even"
+    half = dim // 2
+    freqs = torch.exp(
+        -math.log(max_period)
+        * torch.arange(half, dtype=t.dtype, device=t.device)
+        / half
+    )                                        # (half,) — log-spaced frequencies
+    args = t[:, None] * freqs[None]          # (B, half)
+    return torch.cat([torch.sin(args), torch.cos(args)], dim=-1)  # (B, dim)
+
+
 class ConvBlock(nn.Module):
     """Double conv with GroupNorm and time embedding injection."""
     def __init__(self, in_ch, out_ch, time_emb_dim):
@@ -38,8 +66,9 @@ class MiniUNetContinuous(nn.Module):
     Compared to MiniUNetCFG (week10/unet.py) the key differences are:
       1. No class conditioning — this model is unconditional.
       2. t is already in [0, 1] (continuous), so no division by num_steps.
-      3. self.time_proj is stored as a proper nn.Module attribute instead of
-         being instantiated inside forward() (which prevented it from learning).
+      3. Uses a rich multi-frequency sinusoidal embedding (see sinusoidal_embedding)
+         followed by a learned SiLU MLP, giving the model a unique fingerprint for
+         every noise level.
       4. The model predicts noise ε rather than a velocity field.
 
     Architecture:
@@ -53,9 +82,13 @@ class MiniUNetContinuous(nn.Module):
         super().__init__()
         self.time_emb_dim = time_emb_dim
 
-        # Time projection: [sin(pi*t), cos(pi*t)] -> time_emb_dim
-        # Stored as a module attribute so its parameters are learned.
-        self.time_proj = nn.Linear(2, time_emb_dim)
+        # Time embedding: sinusoidal features -> learned SiLU MLP -> time_emb_dim
+        # The MLP lets the model learn which frequency combinations matter most.
+        self.time_embed = nn.Sequential(
+            nn.Linear(time_emb_dim, time_emb_dim * 2),
+            nn.SiLU(),
+            nn.Linear(time_emb_dim * 2, time_emb_dim),
+        )
 
         # Encoder
         self.inc   = ConvBlock(in_channels, 16, time_emb_dim)
@@ -78,11 +111,8 @@ class MiniUNetContinuous(nn.Module):
         Returns:
             (B, 1, 28, 28) predicted noise ε
         """
-        # Build sinusoidal time embedding — t is already in [0, 1]
-        t_sin_cos = torch.stack(
-            [torch.sin(t * math.pi), torch.cos(t * math.pi)], dim=-1
-        )  # (B, 2)
-        emb = self.time_proj(t_sin_cos)  # (B, time_emb_dim)
+        # Rich multi-frequency time embedding
+        emb = self.time_embed(sinusoidal_embedding(t, self.time_emb_dim))  # (B, time_emb_dim)
 
         # Encoder
         x1 = self.inc(x, emb)                      # (B, 16, 28, 28)
