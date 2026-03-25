@@ -19,4 +19,4 @@ All tutorials will be released here. Feel free to fork or star this repo for fut
 - Week 8: Evaluating generative AI
 - Week 9: Diffusion Models as Latent Variable Models
 - Week 10: Diffusion Models as Score-Based Models
-- Week 11: Diffusion Models from a Continuous-Time Perspective, Flow Matching
+- Week 11: Diffusion Models from a Continuous-Time Perspective
